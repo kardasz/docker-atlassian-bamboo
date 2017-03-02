@@ -1,0 +1,44 @@
+version: '3'
+services:
+  postgres:
+    image: postgres:9.6
+    ports:
+        - "${BIND_IP:-0.0.0.0}5432:5432"
+    environment:
+        - POSTGRES_USER=bamboo
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-jira}
+        - POSTGRES_DB=bamboo
+        - TZ=${TZ:-UTC}
+    volumes:
+        - postgres-data:/var/lib/postgresql/data
+  bamboo:
+    build: .
+    image: kardasz/atlassian-bamboo
+    ports:
+      - "${BIND_IP:-0.0.0.0}8085:8085"
+    depends_on:
+      - postgres
+    links:
+      - postgres
+    environment:
+      TZ: ${TZ:-UTC}
+    volumes:
+      - bamboo-data:/var/atlassian/bamboo/data
+  backup:
+    build: ./services/backup
+    depends_on:
+      - postgres
+      - bamboo
+    links:
+      - postgres
+    environment:
+      TZ: ${TZ:-UTC}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-bamboo}
+      BAMBOO_HOME: /var/atlassian/bamboo/data
+    volumes:
+      - bamboo-data:/var/atlassian/bamboo/data
+      - ${BAMBOO_BACKUP_VOLUME:-bamboo-backup}:/var/atlassian/bamboo/backup
+volumes:
+  postgres-data:
+  bamboo-data:
+  bamboo-backup:
